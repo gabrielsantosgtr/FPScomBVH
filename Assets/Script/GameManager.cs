@@ -17,10 +17,9 @@ public class GameManager : MonoBehaviour
     public float duracaoDoRastro = 0.1f;
 
     [Header("Configuração de Física")]
-    // Selecione a layer "Inimigo" aqui no Inspector
+
     public LayerMask layerMascaraInimigo; 
 
-    // Cache para o modo "Sem BVH" (que precisa da lista)
     private EnemyBVH[] todosInimigos;
 
     void Start()
@@ -28,7 +27,6 @@ public class GameManager : MonoBehaviour
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
 
-        // Ainda precisamos da lista para o modo "Sem BVH" (Força Bruta)
         todosInimigos = FindObjectsOfType<EnemyBVH>();
         
         if(textoStatus) textoStatus.text = "Pronto para teste.";
@@ -40,8 +38,6 @@ public class GameManager : MonoBehaviour
         if (Input.GetMouseButtonDown(0))
         {
             Ray raio = cam.ScreenPointToRay(Input.mousePosition);
-            
-            // Verifica se o mouse não está sobre a UI
             if (!UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject())
             {
                 Atirar(raio);
@@ -51,7 +47,6 @@ public class GameManager : MonoBehaviour
 
     void Atirar(Ray raio)
     {
-        // Atualiza lista se estiver no modo força bruta
         bool usarBVH = toggleBVH != null ? toggleBVH.isOn : true;
         if (!usarBVH) todosInimigos = FindObjectsOfType<EnemyBVH>();
 
@@ -72,7 +67,6 @@ public class GameManager : MonoBehaviour
 
         if (usarBVH)
         {
-            // --- MODO BVH HÍBRIDO ---
             RaycastHit hitInicial;
             if (Physics.Raycast(raio, out hitInicial, 1000f, layerMascaraInimigo))
             {
@@ -80,14 +74,10 @@ public class GameManager : MonoBehaviour
                 
                 if (candidato != null)
                 {
-                    // Agora chamamos a função que retorna o nome da parte!
                     string parteAtingida = candidato.TestarImpacto(raio);
-
-                    // Se a string não for nula, acertou!
                     if (!string.IsNullOrEmpty(parteAtingida))
                     {
                         acertou = true;
-                        // Monta o texto: "Inimigo_1 (Box_Cabeca)"
                         nomeDoAlvo = $"{candidato.name} ({parteAtingida})";
                     }
                 }
@@ -95,14 +85,9 @@ public class GameManager : MonoBehaviour
         }
         else
         {
-            // --- MODO SEM BVH (CORRIGIDO: Problema 1) ---
             foreach(var inimigo in todosInimigos)
             {
                 if (inimigo == null) continue;
-
-                // CORREÇÃO: Não usamos mais 'GetComponent<Collider>' genérico.
-                // Forçamos o teste EXCLUSIVAMENTE na malha precisa.
-                // Se bater na caixa, ele ignora. Só conta se bater na malha.
                 if (inimigo.malhaDeColisaoPrecisa != null)
                 {
                     RaycastHit hit;
@@ -123,8 +108,6 @@ public class GameManager : MonoBehaviour
         if(textoPerformance)
         {
             textoPerformance.text = "Tempo: " + tempoMs.ToString("F4") + " ms";
-            // Ajuste o limiar de cor conforme seu PC
-            textoPerformance.color = tempoMs > 0.5 ? Color.red : Color.green; 
         }
 
         if(textoStatus) textoStatus.text = resultadoTexto;

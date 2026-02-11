@@ -14,23 +14,28 @@ public class EnemySpawner : MonoBehaviour
 
     void SpawnarInimigos()
     {
+        // Verificação de segurança fora do loop (economiza processamento)
+        if (prefabsInimigos.Length == 0) return;
+
         for (int i = 0; i < quantidade; i++)
         {
-            if (prefabsInimigos.Length > 0)
-            {
-                GameObject prefabSorteado = prefabsInimigos[Random.Range(0, prefabsInimigos.Length)];
+            GameObject prefabSorteado = prefabsInimigos[Random.Range(0, prefabsInimigos.Length)];
 
-                Vector3 posicaoAleatoria = new Vector3(
-                    Random.Range(-areaDeSpawn, areaDeSpawn),
+            // --- CORREÇÃO AQUI ---
+            // Antes: new Vector3(random, random) -> Cria uma parede vertical (X, Y)
+            // Agora: new Vector3(random, 0, random) -> Cria um chão plano (X, Z)
+            Vector3 posicaoAleatoria = new Vector3(
+                Random.Range(-areaDeSpawn, areaDeSpawn), // X (Horizontal)
+                0f,                                      // Y (Altura do Chão - mude se seu chão for mais alto)
+                Random.Range(-areaDeSpawn, areaDeSpawn)  // Z (Profundidade)
+            );
 
-                    Random.Range(-areaDeSpawn, areaDeSpawn)
-                );
-
-                GameObject novoInimigo = Instantiate(prefabSorteado, posicaoAleatoria, Quaternion.identity);
-                novoInimigo.name = "Inimigo_" + i;
-                
-                novoInimigo.transform.parent = this.transform;
-            }
+            // Instancia o inimigo
+            GameObject novoInimigo = Instantiate(prefabSorteado, posicaoAleatoria, Quaternion.identity);
+            
+            // Configurações pós-spawn
+            novoInimigo.name = "Inimigo_" + i;
+            novoInimigo.transform.parent = this.transform; // Organiza na hierarquia
         }
     }
 }
