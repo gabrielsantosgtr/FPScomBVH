@@ -5,6 +5,7 @@ public class EnemyBVH : MonoBehaviour
 {
     private class BVHNode
     {
+        public string nomeDaParte;
         public Bounds bounds; 
         public BVHNode[] children; 
         public Collider meshCollider; 
@@ -23,7 +24,6 @@ public class EnemyBVH : MonoBehaviour
 
     void Start()
     {
-        // Garante que a malha precisa está ligada e na layer correta se necessário
         if (malhaDeColisaoPrecisa != null) malhaDeColisaoPrecisa.enabled = true;
 
         if (raizDaBVH != null)
@@ -35,18 +35,16 @@ public class EnemyBVH : MonoBehaviour
     private BVHNode ConstruirArvore(Transform atual)
     {
         BVHNode node = new BVHNode();
-
-        // 1. Tenta pegar o BoxCollider (prioridade para a estrutura BVH)
-        BoxCollider box = atual.GetComponent<BoxCollider>();
         
-        // 2. Se não tiver Box, mas for o objeto da Malha, usa a bounding box da malha!
+        node.nomeDaParte = atual.name;
+
+        BoxCollider box = atual.GetComponent<BoxCollider>();
         Collider colisorGenerico = atual.GetComponent<Collider>();
         bool ehObjetoDaMalha = (colisorGenerico == malhaDeColisaoPrecisa);
 
         if (box != null)
         {
             node.bounds = box.bounds;
-            // Só desliga se não for a raiz principal e não for a malha visual
             if (atual.gameObject != this.gameObject && atual.gameObject != raizDaBVH && !ehObjetoDaMalha)
             {
                 box.enabled = false; 
@@ -54,17 +52,13 @@ public class EnemyBVH : MonoBehaviour
         }
         else if (ehObjetoDaMalha)
         {
-            // CORREÇÃO: Se for a malha e não tiver box, usa o tamanho da malha para o nó!
-            // Isso evita que o Bounds fique com tamanho zero e o raio falhe.
             node.bounds = colisorGenerico.bounds;
         }
         else
         {
-            // Se não é nada, cria um ponto vazio (provavelmente um agrupador vazio)
             node.bounds = new Bounds(atual.position, Vector3.zero);
         }
 
-        // Verifica se este nó carrega a referência da malha precisa
         if (ehObjetoDaMalha)
         {
             node.meshCollider = malhaDeColisaoPrecisa;
@@ -83,71 +77,84 @@ public class EnemyBVH : MonoBehaviour
         return node;
     }
 
-    public bool TestarImpacto(Ray raio)
+    public string TestarImpacto(Ray raio)
     {
-        if (raizNode == null) return false;
+        if (raizNode == null) return null;
         return VerificarNode(raizNode, raio);
     }
 
-    // Versão "Ligação Direta" - Resolve o problema das caixas vazias
-    private bool VerificarNode(BVHNode node, Ray raio)
+    private string VerificarNode(BVHNode node, Ray raio)
     {
-        // 1. O raio bateu na caixa matemática deste nó?
-        if (!node.Intersecta(raio))
+
+        bool ehContainerVazio = (node.bounds.size == Vector3.zero) && (node.children != null && node.children.Length > 0);
+
+        if (!ehContainerVazio)
         {
-            return false; // Se não bateu na caixa, nem perde tempo
+            if (!node.Intersecta(raio)) return null;
         }
 
-        // 2. Se bateu na caixa, verifica se é uma folha (não tem filhos)
-        // Se for uma folha (ex: Box da Cabeça), AGORA testamos a malha pesada.
         if (node.children == null || node.children.Length == 0)
         {
-            // O Truque: Mesmo que a caixa não tenha a malha nela, 
-            // nós forçamos o teste na "malhaDeColisaoPrecisa" global do script.
             if (malhaDeColisaoPrecisa != null)
             {
                 RaycastHit hit;
-                return malhaDeColisaoPrecisa.Raycast(raio, out hit, 1000f);
+                if (malhaDeColisaoPrecisa.Raycast(raio, out hit, 1000f))
+                {
+                    return node.nomeDaParte;
+                }
             }
+            return null;
         }
 
-        // 3. Se não é folha (ainda tem caixas menores dentro), continua descendo
         if (node.children != null)
         {
             foreach (var filho in node.children)
             {
-                if (VerificarNode(filho, raio))
+                string resultadoFilho = VerificarNode(filho, raio);
+                if (resultadoFilho != null)
                 {
-                    return true;
+                    return resultadoFilho;
                 }
             }
         }
-        
-        // Proteção extra: Se chegou aqui, bateu na caixa mas não nos filhos.
-        // Tenta testar a malha uma última vez caso a estrutura seja rasa.
+
         if (malhaDeColisaoPrecisa != null)
         {
              RaycastHit hit;
-             return malhaDeColisaoPrecisa.Raycast(raio, out hit, 1000f);
+             if(malhaDeColisaoPrecisa.Raycast(raio, out hit, 1000f))
+             {
+                 return "Torso/Geral"; 
+             }
         }
 
-        return false;
+        return null;
     }
 
-    // Gizmos para debug visual
     void OnDrawGizmos()
     {
         if (raizNode != null)
         {
+
+            Gizmos.color = Color.red;
+            Gizmos.DrawWireCube(raizNode.bounds.center, raizNode.bounds.size);
+
             Gizmos.color = Color.green;
-            DesenharNodeRecursivo(raizNode);
+            if (raizNode.children != null)
+            {
+                foreach (var filho in raizNode.children)
+                {
+                    DesenharNodeRecursivo(filho);
+                }
+            }
         }
     }
 
     void DesenharNodeRecursivo(BVHNode node)
     {
         if (node == null) return;
+        
         Gizmos.DrawWireCube(node.bounds.center, node.bounds.size);
+
         if (node.children != null)
             foreach (var f in node.children) DesenharNodeRecursivo(f);
     }

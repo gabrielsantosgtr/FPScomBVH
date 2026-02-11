@@ -3,9 +3,9 @@ using System.Collections.Generic;
 
 public class BVHNode
 {
-    public Bounds box;              // O volume do cubo (AABB)
-    public List<BVHNode> children;  // Filhos (se houver)
-    public MeshCollider meshRef;    // Referência para o teste final de precisão
+    public Bounds box;            
+    public List<BVHNode> children; 
+    public MeshCollider meshRef;  
 
     public BVHNode(Bounds b)
     {
@@ -13,7 +13,6 @@ public class BVHNode
         children = new List<BVHNode>();
     }
 
-    // Desenha os Gizmos para visualização (Verde para raiz/nós, Amarelo para folhas)
     public void DrawGizmos()
     {
         Gizmos.color = Color.green;

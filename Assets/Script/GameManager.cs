@@ -74,16 +74,22 @@ public class GameManager : MonoBehaviour
         {
             // --- MODO BVH HÍBRIDO ---
             RaycastHit hitInicial;
-            // O raio bate na Layer "Inimigo" (no BoxCollider da Raiz que deixamos ligado agora)
             if (Physics.Raycast(raio, out hitInicial, 1000f, layerMascaraInimigo))
             {
                 EnemyBVH candidato = hitInicial.collider.GetComponentInParent<EnemyBVH>();
                 
-                // Se achou o inimigo, pede pra ele rodar a lógica interna dele
-                if (candidato != null && candidato.TestarImpacto(raio))
+                if (candidato != null)
                 {
-                    acertou = true;
-                    nomeDoAlvo = candidato.name;
+                    // Agora chamamos a função que retorna o nome da parte!
+                    string parteAtingida = candidato.TestarImpacto(raio);
+
+                    // Se a string não for nula, acertou!
+                    if (!string.IsNullOrEmpty(parteAtingida))
+                    {
+                        acertou = true;
+                        // Monta o texto: "Inimigo_1 (Box_Cabeca)"
+                        nomeDoAlvo = $"{candidato.name} ({parteAtingida})";
+                    }
                 }
             }
         }
